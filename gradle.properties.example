@@ -1,0 +1,7 @@
+# GitHub Packages credentials
+# gpr.user=your_github_username
+# gpr.key=your_github_token
+
+# Signing (optional)
+# signing.key=your_pgp_private_key
+# signing.password=your_pgp_password
