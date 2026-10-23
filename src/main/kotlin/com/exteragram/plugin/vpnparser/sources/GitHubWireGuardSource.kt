@@ -6,11 +6,10 @@ import com.exteragram.plugin.vpnparser.model.AuthConfig
 import com.exteragram.plugin.vpnparser.model.AuthType
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
 
 class GitHubWireGuardSource : VPNSource {
     override val name = "GitHub-WireGuard"
@@ -36,17 +35,16 @@ class GitHubWireGuardSource : VPNSource {
         val configs = mutableListOf<VPNConfig>()
         try {
             val apiUrl = "https://api.github.com/repos/$repo/contents/"
-            val response: HttpResponse = client.get { url(apiUrl) }
-            val json = response.bodyAsText()
-            val items = Json.decodeFromString<List<JsonObject>>(json)
+            val jsonResponse = client.get<String>(apiUrl)
+            val items = Json.decodeFromString<List<JsonElement>>(jsonResponse)
             
             for (item in items) {
-                val fileName = item["name"]?.jsonPrimitive?.content ?: ""
-                val downloadUrl = item["download_url"]?.jsonPrimitive?.content ?: ""
+                val obj = item.jsonObject
+                val fileName = obj["name"]?.jsonPrimitive?.content ?: ""
+                val downloadUrl = obj["download_url"]?.jsonPrimitive?.content ?: ""
                 if (fileName.endsWith(".conf") || fileName.contains("wireguard", ignoreCase = true)) {
                     try {
-                        val confResponse: HttpResponse = client.get { url(downloadUrl) }
-                        val confContent = confResponse.bodyAsText()
+                        val confContent = client.get<String>(downloadUrl)
                         val endpoint = extractEndpoint(confContent)
                         configs.add(VPNConfig(
                             name = "GH-$repo-$fileName",

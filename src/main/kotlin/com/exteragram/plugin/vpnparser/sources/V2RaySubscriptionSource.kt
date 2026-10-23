@@ -6,11 +6,10 @@ import com.exteragram.plugin.vpnparser.model.AuthConfig
 import com.exteragram.plugin.vpnparser.model.AuthType
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
 import java.util.Base64
 
 class V2RaySubscriptionSource(
@@ -32,15 +31,15 @@ class V2RaySubscriptionSource(
     private suspend fun fetchFromUrl(client: HttpClient, url: String): List<VPNConfig> {
         val configs = mutableListOf<VPNConfig>()
         try {
-            val response: HttpResponse = client.get { url(url) }
-            var text = response.bodyAsText()
+            val text = client.get<String>(url)
+            var decodedText = text
             // Try base64 decode
             try {
-                text = String(Base64.getDecoder().decode(text.trim()))
+                decodedText = String(Base64.getDecoder().decode(text.trim()))
             } catch (e: Exception) {
             }
             
-            for (line in text.lines()) {
+            for (line in decodedText.lines()) {
                 val parsed = parseUri(line.trim())
                 if (parsed != null) configs.add(parsed)
             }
@@ -64,7 +63,7 @@ class V2RaySubscriptionSource(
             val b64 = uri.substring(8)
             val padded = b64.padEnd(b64.length + (4 - b64.length % 4) % 4, '=')
             val json = String(Base64.getDecoder().decode(padded))
-            val obj = Json.decodeFromString<JsonObject>(json)
+            val obj = Json.decodeFromString<JsonElement>(json).jsonObject
             return VPNConfig(
                 name = obj["ps"]?.jsonPrimitive?.content ?: "VMess",
                 protocol = VPNProtocol.VMESS,

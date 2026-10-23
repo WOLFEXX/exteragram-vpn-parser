@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
 import java.util.concurrent.atomic.AtomicInteger
 
 class VPNParserService(
@@ -39,7 +40,7 @@ class VPNParserService(
         
         jobs.awaitAll().forEach { allConfigs.addAll(it) }
         
-        var result = allConfigs
+        var result: List<VPNConfig> = allConfigs
         if (deduplicate) {
             result = deduplicateConfigs(result)
         }
@@ -77,7 +78,7 @@ class VPNParserService(
     )
     
     fun close() {
-        scope.cancel()
+        scope.coroutineContext.cancel()
     }
 }
 
