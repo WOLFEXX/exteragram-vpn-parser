@@ -10,7 +10,6 @@ version = "1.0.0"
 
 repositories {
     mavenCentral()
-    maven("https://maven.pkg.github.com/Exteragram/Exteragram")
     maven { url = uri("https://maven.pkg.github.com/${project.group}/${project.name}") }
 }
 
@@ -20,7 +19,8 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
-    implementation("com.exteragram:plugin-api:1.0.0")
+    // Exteragram plugin API is provided at runtime by Exteragram
+    // API interfaces are included locally in this plugin
 }
 
 kotlin {
