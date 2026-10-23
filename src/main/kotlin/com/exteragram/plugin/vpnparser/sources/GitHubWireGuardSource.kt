@@ -6,14 +6,16 @@ import com.exteragram.plugin.vpnparser.model.AuthConfig
 import com.exteragram.plugin.vpnparser.model.AuthType
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.request.url
+import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 class GitHubWireGuardSource : VPNSource {
     override val name = "GitHub-WireGuard"
     override val description = "WireGuard configs from GitHub repositories"
+    override val enabled = true
     override val protocols = listOf(VPNProtocol.WIREGUARD)
     
     private val repos = listOf(
@@ -34,18 +36,20 @@ class GitHubWireGuardSource : VPNSource {
         val configs = mutableListOf<VPNConfig>()
         try {
             val apiUrl = "https://api.github.com/repos/$repo/contents/"
-            val response = client.get<String> { url(apiUrl) }
-            val items = Json.decodeFromString<List<JsonObject>>(response)
+            val response: HttpResponse = client.get { url(apiUrl) }
+            val json = response.bodyAsText()
+            val items = Json.decodeFromString<List<JsonObject>>(json)
             
             for (item in items) {
-                val name = item.getString("name")
-                val downloadUrl = item.getString("download_url")
-                if (name.endsWith(".conf") || name.contains("wireguard", ignoreCase = true)) {
+                val fileName = item["name"]?.jsonPrimitive?.content ?: ""
+                val downloadUrl = item["download_url"]?.jsonPrimitive?.content ?: ""
+                if (fileName.endsWith(".conf") || fileName.contains("wireguard", ignoreCase = true)) {
                     try {
-                        val confContent = client.get<String> { url(downloadUrl) }
+                        val confResponse: HttpResponse = client.get { url(downloadUrl) }
+                        val confContent = confResponse.bodyAsText()
                         val endpoint = extractEndpoint(confContent)
                         configs.add(VPNConfig(
-                            name = "GH-$repo-$name",
+                            name = "GH-$repo-$fileName",
                             protocol = VPNProtocol.WIREGUARD,
                             server = endpoint,
                             port = 51820,

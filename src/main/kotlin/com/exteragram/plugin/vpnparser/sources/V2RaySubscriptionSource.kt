@@ -6,10 +6,11 @@ import com.exteragram.plugin.vpnparser.model.AuthConfig
 import com.exteragram.plugin.vpnparser.model.AuthType
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.request.url
+import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import java.util.Base64
 
 class V2RaySubscriptionSource(
@@ -17,6 +18,7 @@ class V2RaySubscriptionSource(
 ) : VPNSource {
     override val name = "V2Ray-Subscription"
     override val description = "VMess/VLess/Trojan/Shadowsocks from subscription links"
+    override val enabled = true
     override val protocols = listOf(VPNProtocol.VMESS, VPNProtocol.VLESS, VPNProtocol.TROJAN, VPNProtocol.SHADOWSOCKS)
     
     override suspend fun fetchConfigs(client: HttpClient): List<VPNConfig> = withContext(Dispatchers.IO) {
@@ -30,7 +32,9 @@ class V2RaySubscriptionSource(
     private suspend fun fetchFromUrl(client: HttpClient, url: String): List<VPNConfig> {
         val configs = mutableListOf<VPNConfig>()
         try {
-            var text = client.get<String> { url(url) }
+            val response: HttpResponse = client.get { url(url) }
+            var text = response.bodyAsText()
+            // Try base64 decode
             try {
                 text = String(Base64.getDecoder().decode(text.trim()))
             } catch (e: Exception) {
@@ -62,10 +66,10 @@ class V2RaySubscriptionSource(
             val json = String(Base64.getDecoder().decode(padded))
             val obj = Json.decodeFromString<JsonObject>(json)
             return VPNConfig(
-                name = obj.getString("ps") ?: "VMess",
+                name = obj["ps"]?.jsonPrimitive?.content ?: "VMess",
                 protocol = VPNProtocol.VMESS,
-                server = obj.getString("add") ?: "",
-                port = obj.getString("port")?.toIntOrNull() ?: 443,
+                server = obj["add"]?.jsonPrimitive?.content ?: "",
+                port = obj["port"]?.jsonPrimitive?.content?.toIntOrNull() ?: 443,
                 auth = AuthConfig(AuthType.UUID, obj.toStringMap()),
                 rawConfig = uri,
                 source = name

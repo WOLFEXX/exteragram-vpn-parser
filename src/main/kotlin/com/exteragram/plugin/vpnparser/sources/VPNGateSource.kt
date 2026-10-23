@@ -6,7 +6,7 @@ import com.exteragram.plugin.vpnparser.model.AuthConfig
 import com.exteragram.plugin.vpnparser.model.AuthType
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.request.url
+import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Base64
@@ -14,12 +14,14 @@ import java.util.Base64
 class VPNGateSource : VPNSource {
     override val name = "VPNGate"
     override val description = "OpenVPN configs from vpngate.net public API"
+    override val enabled = true
     override val protocols = listOf(VPNProtocol.OPENVPN)
     
     override suspend fun fetchConfigs(client: HttpClient): List<VPNConfig> = withContext(Dispatchers.IO) {
         val url = "http://www.vpngate.net/api/iphone/"
-        val response = client.get<String> { url(url) }
-        parseVPNGateCSV(response)
+        val response: HttpResponse = client.get { url(url) }
+        val csv = response.bodyAsText()
+        parseVPNGateCSV(csv)
     }
     
     private fun parseVPNGateCSV(csv: String): List<VPNConfig> {
